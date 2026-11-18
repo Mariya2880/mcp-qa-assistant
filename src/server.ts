@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerReportTools } from './tools/reportTools.js';
 
 export const SERVER_NAME = 'mcp-qa-assistant';
 export const SERVER_VERSION = '0.1.0';
@@ -20,6 +21,8 @@ export function createServer(): McpServer {
       content: [{ type: 'text', text: `pong (${SERVER_NAME} v${SERVER_VERSION})` }],
     }),
   );
+
+  registerReportTools(server);
 
   return server;
 }

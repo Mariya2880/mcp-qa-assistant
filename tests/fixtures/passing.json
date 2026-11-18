@@ -1,0 +1,17 @@
+{
+  "suites": [
+    {
+      "title": "ui/login.spec.ts",
+      "file": "ui/login.spec.ts",
+      "specs": [
+        {
+          "title": "standard user can log in",
+          "file": "ui/login.spec.ts",
+          "line": 10,
+          "tags": ["@smoke"],
+          "tests": [{ "projectName": "chromium", "status": "expected", "results": [{ "status": "passed", "duration": 800 }] }]
+        }
+      ]
+    }
+  ]
+}
