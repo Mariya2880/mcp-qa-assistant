@@ -1,0 +1,134 @@
+{
+  "config": { "version": "1.49.0" },
+  "suites": [
+    {
+      "title": "ui/checkout.spec.ts",
+      "file": "ui/checkout.spec.ts",
+      "specs": [],
+      "suites": [
+        {
+          "title": "End-to-end purchase",
+          "file": "ui/checkout.spec.ts",
+          "specs": [
+            {
+              "title": "a customer can buy several items with correct totals",
+              "file": "ui/checkout.spec.ts",
+              "line": 62,
+              "tags": ["@smoke", "@e2e"],
+              "tests": [
+                {
+                  "projectName": "chromium",
+                  "status": "unexpected",
+                  "annotations": [],
+                  "results": [
+                    {
+                      "status": "failed",
+                      "retry": 0,
+                      "duration": 4210,
+                      "error": { "message": "\u001b[2mexpect(\u001b[22mreceived).toBe(expected)\n\nExpected: 3.84\nReceived: 3.83" },
+                      "steps": [
+                        { "title": "log in and pick products after sorting by price", "duration": 1200 },
+                        { "title": "review the cart", "duration": 400 },
+                        { "title": "enter customer details", "duration": 300 },
+                        {
+                          "title": "verify the price summary is calculated correctly",
+                          "duration": 90,
+                          "error": { "message": "Expected: 3.84\nReceived: 3.83" },
+                          "steps": [{ "title": "expect.toBe", "duration": 2, "error": { "message": "Expected: 3.84" } }]
+                        }
+                      ],
+                      "attachments": [
+                        { "name": "screenshot", "contentType": "image/png", "path": "test-results/checkout-e2e/test-failed-1.png" },
+                        { "name": "trace", "contentType": "application/zip", "path": "test-results/checkout-e2e/trace.zip" }
+                      ]
+                    },
+                    {
+                      "status": "failed",
+                      "retry": 1,
+                      "duration": 4005,
+                      "error": { "message": "Expected: 3.84\nReceived: 3.83" },
+                      "steps": [],
+                      "attachments": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "ui/products.spec.ts",
+      "file": "ui/products.spec.ts",
+      "specs": [],
+      "suites": [
+        {
+          "title": "Product details page",
+          "file": "ui/products.spec.ts",
+          "specs": [
+            {
+              "title": "add to cart on the details page is reflected back on the products page",
+              "file": "ui/products.spec.ts",
+              "line": 101,
+              "tags": ["@regression"],
+              "tests": [
+                {
+                  "projectName": "chromium",
+                  "status": "flaky",
+                  "annotations": [],
+                  "results": [
+                    {
+                      "status": "failed",
+                      "retry": 0,
+                      "duration": 5100,
+                      "error": { "message": "Error: strict mode violation: getByRole('button', { name: 'Add to cart' }) resolved to 6 elements" },
+                      "steps": [],
+                      "attachments": [{ "name": "trace", "contentType": "application/zip", "path": "test-results/details/trace.zip" }]
+                    },
+                    { "status": "passed", "retry": 1, "duration": 1300, "steps": [], "attachments": [] }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "shows the same name and price as the product clicked in the list",
+              "file": "ui/products.spec.ts",
+              "line": 80,
+              "tags": ["@regression"],
+              "tests": [
+                {
+                  "projectName": "chromium",
+                  "status": "expected",
+                  "annotations": [],
+                  "results": [{ "status": "passed", "retry": 0, "duration": 900, "steps": [], "attachments": [] }]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "api/booking.spec.ts",
+      "file": "api/booking.spec.ts",
+      "specs": [
+        {
+          "title": "health check responds",
+          "file": "api/booking.spec.ts",
+          "line": 12,
+          "tags": ["@smoke"],
+          "tests": [
+            {
+              "projectName": "api",
+              "status": "skipped",
+              "annotations": [{ "type": "skip", "description": "API down for maintenance" }],
+              "results": [{ "status": "skipped", "retry": 0, "duration": 0, "steps": [], "attachments": [] }]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "stats": { "startTime": "2026-11-17T18:19:40.000Z", "duration": 19100, "expected": 1, "unexpected": 1, "flaky": 1, "skipped": 1 }
+}

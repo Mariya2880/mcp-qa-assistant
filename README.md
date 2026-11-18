@@ -11,8 +11,8 @@ An **MCP (Model Context Protocol) server** that gives AI assistants such as Clau
 | Tool | What it does | Status |
 | --- | --- | --- |
 | `ping` | Health check | ✅ |
-| `list_failures` | Summarise failed and flaky tests from a Playwright JSON report | Planned |
-| `get_failure_details` | Error, steps and attachments for one test | Planned |
+| `list_failures` | Summarise failed and flaky tests from a Playwright JSON report | ✅ |
+| `get_failure_details` | Error, failing step, all steps and attachments for one test | ✅ |
 | `draft_bug_report` | Turn a failed test into a structured bug report | Planned |
 
 ## Quick start
