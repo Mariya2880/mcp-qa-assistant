@@ -73,3 +73,40 @@ describe('report tools over MCP', () => {
     expect(result.isError).toBe(true);
   });
 });
+
+describe('draft_bug_report over MCP', () => {
+  let client: Client;
+  beforeAll(async () => {
+    client = await connectClient();
+  });
+
+  it('drafts a report for a failed test, using the report metadata', async () => {
+    const out = textOf(
+      await client.callTool({
+        name: 'draft_bug_report',
+        arguments: { reportPath: fixture('report.json'), test: 'correct totals', environment: 'CI' },
+      }),
+    );
+    expect(out).toMatch(/^# \[End-to-end purchase\]/);
+    expect(out).toContain('- **Playwright:** 1.49.0');
+    expect(out).toContain('- **Run started:** 2026-11-17T18:19:40.000Z');
+    expect(out).toContain('- **Environment:** CI');
+  });
+
+  it('refuses to draft a bug for a passing test', async () => {
+    const result = await client.callTool({
+      name: 'draft_bug_report',
+      arguments: { reportPath: fixture('report.json'), test: 'same name and price' },
+    });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/passed: there is no failure to report/);
+  });
+
+  it('rejects an unknown severity value', async () => {
+    const result = await client.callTool({
+      name: 'draft_bug_report',
+      arguments: { reportPath: fixture('report.json'), test: 'correct totals', severity: 'urgent' },
+    });
+    expect(result.isError).toBe(true);
+  });
+});

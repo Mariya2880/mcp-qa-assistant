@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { collectTests, loadReport, ReportError, type TestCase } from '../report/parse.js';
+import { collectTests, findTest, loadReport, ReportError, type TestCase } from '../report/parse.js';
 
-const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
-const fail = (t: string) => ({ ...text(t), isError: true });
+export const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
+export const fail = (t: string) => ({ ...text(t), isError: true });
 
-const reportPath = z
+export const reportPath = z
   .string()
   .min(1)
   .describe('Path to a Playwright JSON report, e.g. ./report.json (npx playwright test --reporter=json > report.json)');
@@ -61,17 +61,9 @@ export function registerReportTools(server: McpServer): void {
     },
     async ({ reportPath, test }) => {
       try {
-        const tests = collectTests(await loadReport(reportPath));
-        const needle = test.toLowerCase();
-        const exact = tests.filter((t) => t.id === test);
-        const matches = exact.length ? exact : tests.filter((t) => t.id.toLowerCase().includes(needle));
-
-        if (matches.length === 0) return fail(`No test matches "${test}".`);
-        if (matches.length > 1) {
-          return fail(`"${test}" matches ${matches.length} tests; be more specific:\n${matches.map((m) => `- ${m.id}`).join('\n')}`);
-        }
-
-        const tc = matches[0]!;
+        const found = findTest(collectTests(await loadReport(reportPath)), test);
+        if (!found.ok) return fail(found.message);
+        const tc = found.test;
         const lines = [
           `# ${tc.titlePath.join(' › ')}`,
           `Outcome: ${tc.outcome} · Project: ${tc.project} · Attempts: ${tc.attempts} · Duration: ${tc.durationMs} ms`,

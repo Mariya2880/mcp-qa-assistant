@@ -109,3 +109,20 @@ export function collectTests(report: Report): TestCase[] {
   for (const suite of report.suites) walk(suite, [], true);
   return out;
 }
+
+export type FindResult = { ok: true; test: TestCase } | { ok: false; message: string };
+
+/** Finds one test by exact id, or by a case-insensitive fragment of its id/title. */
+export function findTest(tests: TestCase[], query: string): FindResult {
+  const exact = tests.filter((t) => t.id === query);
+  const needle = query.toLowerCase();
+  const matches = exact.length ? exact : tests.filter((t) => t.id.toLowerCase().includes(needle));
+  if (matches.length === 0) return { ok: false, message: `No test matches "${query}".` };
+  if (matches.length > 1) {
+    return {
+      ok: false,
+      message: `"${query}" matches ${matches.length} tests; be more specific:\n${matches.map((m) => `- ${m.id}`).join('\n')}`,
+    };
+  }
+  return { ok: true, test: matches[0]! };
+}
