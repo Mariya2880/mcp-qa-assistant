@@ -73,6 +73,7 @@ const SuiteSchema: z.ZodType<Suite> = z.lazy(() =>
 );
 
 export const ReportSchema = z.looseObject({
+  config: z.looseObject({ version: z.string().optional() }).optional(),
   suites: z.array(SuiteSchema),
   stats: z
     .looseObject({
