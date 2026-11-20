@@ -27,6 +27,12 @@ describe('report tools over MCP', () => {
     expect(out).not.toContain('shows the same name and price');
   });
 
+  it('list_failures shows expected vs received for assertion failures', async () => {
+    const out = textOf(await client.callTool({ name: 'list_failures', arguments: { reportPath: fixture('report.json') } }));
+    expect(out).toContain('error: expected 3.84, received 3.83');
+    expect(out).toContain("error: Error: strict mode violation");
+  });
+
   it('list_failures can leave flaky tests out', async () => {
     const out = textOf(
       await client.callTool({ name: 'list_failures', arguments: { reportPath: fixture('report.json'), includeFlaky: false } }),
