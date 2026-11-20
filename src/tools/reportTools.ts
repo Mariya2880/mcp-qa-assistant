@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { collectTests, findTest, loadReport, ReportError, type TestCase } from '../report/parse.js';
-import { splitExpectation } from '../report/bugReport.js';
+import { summariseError } from '../report/bugReport.js';
 
 export const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
 export const fail = (t: string) => ({ ...text(t), isError: true });
@@ -12,9 +12,7 @@ export const reportPath = z
   .describe('Path to a Playwright JSON report, e.g. ./report.json (npx playwright test --reporter=json > report.json)');
 
 function oneLine(tc: TestCase): string {
-  // Assertion failures read best as "expected X, received Y"; anything else as its first line.
-  const { expected, actual } = splitExpectation(tc.error);
-  const err = tc.error ? (expected ? `expected ${expected}, received ${actual}` : tc.error.split('\n')[0]?.trim()) : undefined;
+  const err = summariseError(tc.error);
   return `- [${tc.outcome.toUpperCase()}] ${tc.titlePath.join(' › ')} (${tc.project}, ${tc.attempts} attempt${tc.attempts === 1 ? '' : 's'})` +
     `\n  id: ${tc.id}` + (err ? `\n  error: ${err}` : '');
 }

@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerReportTools } from './tools/reportTools.js';
 import { registerBugReportTool } from './tools/bugReportTool.js';
+import { registerCompareTool } from './tools/compareTool.js';
 
 export const SERVER_NAME = 'mcp-qa-assistant';
 export const SERVER_VERSION = '0.1.0';
@@ -25,6 +26,7 @@ export function createServer(): McpServer {
 
   registerReportTools(server);
   registerBugReportTool(server);
+  registerCompareTool(server);
 
   return server;
 }

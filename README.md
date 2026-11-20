@@ -15,6 +15,7 @@ An **MCP (Model Context Protocol) server** that gives AI assistants such as Clau
 | `list_failures` | `reportPath`, `includeFlaky?` | Run summary plus every failed and flaky test, with an id and the key error (`expected X, received Y` for assertions) |
 | `get_failure_details` | `reportPath`, `test` (id or title fragment) | Full error, the failing step path, all steps, annotations, trace and screenshot paths |
 | `draft_bug_report` | `reportPath`, `test`, `environment?`, `severity?` | Markdown bug report: title, suggested severity **with its reason**, frequency, environment, steps (failing step marked), expected vs actual, evidence, reproduce command |
+| `compare_runs` | `baselineReportPath`, `currentReportPath` | What changed between two runs: **new failures** first, then newly flaky, still failing, fixed, added and removed tests |
 | `ping` | none | Health check |
 
 ### Example: `list_failures`
@@ -29,6 +30,28 @@ Report: 4 tests: 1 passed, 1 failed, 1 flaky, 1 skipped.
 - [FLAKY] Product details page › add to cart on the details page is reflected back on the products page (chromium, 2 attempts)
   id: ui/products.spec.ts:101 › Product details page › add to cart on the details page is reflected back on the products page [chromium]
   error: Error: strict mode violation: getByRole('button', { name: 'Add to cart' }) resolved to 6 elements
+```
+
+### Example: `compare_runs`
+Comparing [`examples/sample-baseline.json`](examples/sample-baseline.json) (an earlier run) with the report above:
+
+```text
+Compared 5 baseline tests with 4 current tests.
+⚠️ 1 new failure since the baseline: start with these.
+
+## New failures (1)
+- End-to-end purchase › a customer can buy several items with correct totals (chromium)
+  error: expected 3.84, received 3.83
+
+## Newly flaky (1)
+- Product details page › add to cart on the details page is reflected back on the products page (chromium)
+  error: Error: strict mode violation: getByRole('button', { name: 'Add to cart' }) resolved to 6 elements
+
+## Fixed (1)
+- Product details page › shows the same name and price as the product clicked in the list (chromium)
+
+## Removed tests (1)
+- deleted booking returns 404 (api)
 ```
 
 ### Example: `draft_bug_report` (excerpt)
@@ -103,6 +126,7 @@ Then call `list_failures` with `reportPath` set to `examples/sample-report.json`
 - *"Read `./report.json` and tell me what failed and what is flaky."*
 - *"Show me the details of the checkout failure. Which step failed?"*
 - *"Draft a bug report for it. The environment is staging, build 2026.11.3."*
+- *"Compare `./yesterday.json` with `./report.json`. What broke since yesterday?"*
 
 ## Design decisions
 
@@ -111,11 +135,12 @@ Then call `list_failures` with `reportPath` set to `examples/sample-report.json`
 - **Failing step path.** Reported from the business step down to the assertion (`verify the price summary › expect.toBe`), and taken from the latest attempt that recorded steps.
 - **Severity is a suggestion with a reason.** It's derived from test tags (`@smoke`, `@e2e`, `@security`) and outcome, always explained, and can be overridden.
 - **Errors are tool results, not crashes.** Bad paths, ambiguous test names and passing tests come back as `isError: true` with guidance, so the assistant can recover.
+- **Comparisons match tests by file, title and project**, not line number, so editing a spec file doesn't make every test look new. Tests skipped in either run are left out, because a skip says nothing about a change in behaviour.
 - **The tool drafts, a human decides.** Every bug report ends with "Review before filing".
 
 ## Testing
 
-30 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, bad input, schema validation and the full bug-report content.
+37 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, run comparison, bad input, schema validation and the full bug-report content.
 
 | Script | Purpose |
 | --- | --- |
@@ -136,14 +161,14 @@ src/
 ├── report/
 │   ├── types.ts          # Zod schema for Playwright's JSON report
 │   ├── parse.ts          # flattens suites into test cases, finds tests
-│   └── bugReport.ts      # severity rules and bug-report drafting
+│   ├── bugReport.ts      # severity rules and bug-report drafting
+│   └── compare.ts        # matching and classifying tests across two runs
 └── tools/                # MCP tool definitions
 tests/                    # Vitest, with report fixtures
-examples/                 # sample report and Claude Desktop config
+examples/                 # sample reports and Claude Desktop config
 ```
 
 ## Roadmap
-- `compare_runs`: find tests that started failing between two reports
 - Flakiness history across several reports
 - Export a drafted bug report directly to Jira or GitHub Issues
 
