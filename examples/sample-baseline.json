@@ -1,0 +1,164 @@
+{
+  "config": {
+    "version": "1.49.0"
+  },
+  "suites": [
+    {
+      "title": "ui/checkout.spec.ts",
+      "file": "ui/checkout.spec.ts",
+      "specs": [],
+      "suites": [
+        {
+          "title": "End-to-end purchase",
+          "file": "ui/checkout.spec.ts",
+          "specs": [
+            {
+              "title": "a customer can buy several items with correct totals",
+              "file": "ui/checkout.spec.ts",
+              "line": 62,
+              "tags": [
+                "@smoke",
+                "@e2e"
+              ],
+              "tests": [
+                {
+                  "projectName": "chromium",
+                  "status": "expected",
+                  "annotations": [],
+                  "results": [
+                    {
+                      "status": "passed",
+                      "retry": 0,
+                      "duration": 3900
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "ui/products.spec.ts",
+      "file": "ui/products.spec.ts",
+      "specs": [],
+      "suites": [
+        {
+          "title": "Product details page",
+          "file": "ui/products.spec.ts",
+          "specs": [
+            {
+              "title": "add to cart on the details page is reflected back on the products page",
+              "file": "ui/products.spec.ts",
+              "line": 95,
+              "tags": [
+                "@regression"
+              ],
+              "tests": [
+                {
+                  "projectName": "chromium",
+                  "status": "expected",
+                  "annotations": [],
+                  "results": [
+                    {
+                      "status": "passed",
+                      "retry": 0,
+                      "duration": 1200
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "shows the same name and price as the product clicked in the list",
+              "file": "ui/products.spec.ts",
+              "line": 80,
+              "tags": [
+                "@regression"
+              ],
+              "tests": [
+                {
+                  "projectName": "chromium",
+                  "status": "unexpected",
+                  "annotations": [],
+                  "results": [
+                    {
+                      "status": "failed",
+                      "retry": 0,
+                      "duration": 800,
+                      "error": {
+                        "message": "Expected: \"$29.99\"\nReceived: \"$9.99\""
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "api/booking.spec.ts",
+      "file": "api/booking.spec.ts",
+      "specs": [
+        {
+          "title": "health check responds",
+          "file": "api/booking.spec.ts",
+          "line": 12,
+          "tags": [
+            "@smoke"
+          ],
+          "tests": [
+            {
+              "projectName": "api",
+              "status": "expected",
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "API down for maintenance"
+                }
+              ],
+              "results": [
+                {
+                  "status": "passed",
+                  "retry": 0,
+                  "duration": 120
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "deleted booking returns 404",
+          "file": "api/booking.spec.ts",
+          "line": 40,
+          "tags": [
+            "@regression"
+          ],
+          "tests": [
+            {
+              "projectName": "api",
+              "status": "expected",
+              "results": [
+                {
+                  "status": "passed",
+                  "duration": 90
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "startTime": "2026-11-16T18:00:00.000Z",
+    "duration": 18000,
+    "expected": 4,
+    "unexpected": 1,
+    "flaky": 0,
+    "skipped": 0
+  }
+}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { collectTests, loadReport } from '../src/report/parse.js';
-import { draftBugReport, splitExpectation, suggestSeverity } from '../src/report/bugReport.js';
+import { draftBugReport, splitExpectation, suggestSeverity, summariseError } from '../src/report/bugReport.js';
 
 const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url));
 const load = async () => collectTests(await loadReport(fixture('report.json')));
@@ -85,5 +85,13 @@ describe('draftBugReport', () => {
 
   it('never leaves three blank lines in a row', async () => {
     for (const tc of await load()) expect(draftBugReport(tc).markdown).not.toMatch(/\n{3,}/);
+  });
+});
+
+describe('summariseError', () => {
+  it('shortens assertions to expected/received and other errors to their first line', () => {
+    expect(summariseError('Expected: 3.84\nReceived: 3.83')).toBe('expected 3.84, received 3.83');
+    expect(summariseError('Error: timeout\n  at x.ts:1')).toBe('Error: timeout');
+    expect(summariseError(undefined)).toBeUndefined();
   });
 });

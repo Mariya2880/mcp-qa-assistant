@@ -30,6 +30,13 @@ export function splitExpectation(error: string | undefined): { expected?: string
   return { actual: error.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 3).join(' ') };
 }
 
+/** One-line error for lists: "expected X, received Y" for assertions, otherwise the first line. */
+export function summariseError(error: string | undefined): string | undefined {
+  if (!error) return undefined;
+  const { expected, actual } = splitExpectation(error);
+  return expected ? `expected ${expected}, received ${actual}` : error.split('\n')[0]?.trim();
+}
+
 /**
  * Suggests a severity from what the test protects (its tags) and how it failed.
  * The reason is always returned, so a human can disagree with it quickly.
