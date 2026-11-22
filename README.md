@@ -17,6 +17,7 @@ An **MCP (Model Context Protocol) server** that gives AI assistants such as Clau
 | `draft_bug_report` | `reportPath`, `test`, `environment?`, `severity?` | Markdown bug report: title, suggested severity **with its reason**, frequency, environment, steps (failing step marked), expected vs actual, evidence, reproduce command |
 | `compare_runs` | `baselineReportPath`, `currentReportPath` | What changed between two runs: **new failures** first, then newly flaky, still failing, fixed, added and removed tests |
 | `flaky_history` | `reportPaths` (2+, oldest first), `top?` | Ranks tests that flaked or failed in some runs but passed in others, with a per-run timeline; tests failing every time are listed separately |
+| `export_bug_to_github` | `reportPath`, `test`, `repo`, `labels?`, `dryRun?` (default `true`) | Turns the drafted bug into a GitHub issue labelled `bug` + `severity:…`. **Dry run by default**; creates the issue only with `dryRun: false` and a `GITHUB_TOKEN` |
 | `ping` | none | Health check |
 
 ### Example: `list_failures`
@@ -92,6 +93,19 @@ Assertion expected: `3.84`
 Assertion received: `3.83`
 ```
 
+### Example: `export_bug_to_github` (dry run, the default)
+
+```text
+DRY RUN: nothing was created. This issue would be opened in my-org/web-shop:
+
+Title: [End-to-end purchase] a customer can buy several items with correct totals: 3.83
+Labels: bug, severity:high, checkout
+
+**Severity:** high: A @smoke/@e2e test failed consistently: a critical user path is affected.
+…
+To create it, call again with dryRun: false (requires GITHUB_TOKEN).
+```
+
 ## Getting started
 
 ```bash
@@ -123,6 +137,23 @@ Add the server to `claude_desktop_config.json` (**Settings → Developer → Edi
 
 A copy is in [`examples/claude_desktop_config.json`](examples/claude_desktop_config.json).
 
+### Creating GitHub issues (optional)
+`export_bug_to_github` previews by default and needs no setup. To let it actually create issues, create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens) limited to the target repository with **Issues: Read and write**, and pass it to the server as an environment variable:
+
+```json
+{
+  "mcpServers": {
+    "qa-assistant": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/mcp-qa-assistant/dist/index.js"],
+      "env": { "GITHUB_TOKEN": "github_pat_..." }
+    }
+  }
+}
+```
+
+Never commit a token to a repository. The server reads it from the environment at call time, so it never appears in tool arguments or responses.
+
 ### Use with Claude Code
 
 ```bash
@@ -144,6 +175,7 @@ Then call `list_failures` with `reportPath` set to `examples/sample-report.json`
 - *"Draft a bug report for it. The environment is staging, build 2026.11.3."*
 - *"Compare `./yesterday.json` with `./report.json`. What broke since yesterday?"*
 - *"Here are this week's nightly reports. Which tests are the least reliable?"*
+- *"Preview a GitHub issue for the checkout failure in `my-org/web-shop`. If it looks right, create it."*
 
 ## Design decisions
 
@@ -154,11 +186,12 @@ Then call `list_failures` with `reportPath` set to `examples/sample-report.json`
 - **Errors are tool results, not crashes.** Bad paths, ambiguous test names and passing tests come back as `isError: true` with guidance, so the assistant can recover.
 - **Comparisons match tests by file, title and project**, not line number, so editing a spec file doesn't make every test look new. Tests skipped in either run are left out, because a skip says nothing about a change in behaviour.
 - **Unstable ≠ broken.** `flaky_history` only ranks tests that both passed and misbehaved across runs; a test failing every time is a consistent failure, reported separately, not flakiness.
-- **The tool drafts, a human decides.** Every bug report ends with "Review before filing".
+- **The tool drafts, a human decides.** Every bug report ends with "Review before filing", and `export_bug_to_github` is a **dry run unless explicitly told otherwise**. A tool that writes to another system should never do so by surprise.
+- **Secrets stay out of the conversation.** The GitHub token comes from the environment, never from tool arguments. API errors (401, 403, 404, 410) are translated into plain-language causes.
 
 ## Testing
 
-43 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, run comparison, flakiness history, bad input, schema validation and the full bug-report content.
+57 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, run comparison, flakiness history, GitHub export (with the API mocked, so tests never create real issues), bad input, schema validation and the full bug-report content.
 
 | Script | Purpose |
 | --- | --- |
@@ -182,13 +215,16 @@ src/
 │   ├── bugReport.ts      # severity rules and bug-report drafting
 │   ├── compare.ts        # matching and classifying tests across two runs
 │   └── history.ts        # per-test history and instability ranking
+├── integrations/
+│   └── github.ts         # issue mapping and GitHub REST API client
 └── tools/                # MCP tool definitions
 tests/                    # Vitest, with report fixtures
 examples/                 # sample reports and Claude Desktop config
 ```
 
 ## Roadmap
-- Export a drafted bug report directly to Jira or GitHub Issues
+- Export to Jira, using the same dry-run-first design
+- Attach the trace and screenshot to the created issue
 
 Related project: **[playwright-ts-e2e-framework](https://github.com/Mariya2880/playwright-ts-e2e-framework)**, whose reports this server reads.
 
