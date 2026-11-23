@@ -4,7 +4,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![MCP](https://img.shields.io/badge/Model_Context_Protocol-server-6E56CF)
 
-An **MCP (Model Context Protocol) server** that gives AI assistants such as Claude practical QA tools for triaging test runs. It reads a Playwright JSON report, lists what failed or flaked, explains a single failure down to the failing step, and drafts a bug report that is ready to review.
+An **MCP (Model Context Protocol) server** that gives AI assistants such as Claude practical QA tools for triaging test runs. It reads a Playwright JSON report, lists what failed or flaked, explains a single failure down to the failing step, drafts a bug report that is ready to review, and can file it as a GitHub or Jira issue (after a preview).
 
 **Why:** triaging a red CI run means opening the report, finding the failures, reading errors and digging out traces. This server gives an assistant structured access to the same information, so you can ask *"what broke in last night's run, and draft the bug for the checkout failure"* and get an answer based on the actual report.
 
@@ -18,6 +18,7 @@ An **MCP (Model Context Protocol) server** that gives AI assistants such as Clau
 | `compare_runs` | `baselineReportPath`, `currentReportPath` | What changed between two runs: **new failures** first, then newly flaky, still failing, fixed, added and removed tests |
 | `flaky_history` | `reportPaths` (2+, oldest first), `top?` | Ranks tests that flaked or failed in some runs but passed in others, with a per-run timeline; tests failing every time are listed separately |
 | `export_bug_to_github` | `reportPath`, `test`, `repo`, `labels?`, `dryRun?` (default `true`) | Turns the drafted bug into a GitHub issue labelled `bug` + `severity:…`. **Dry run by default**; creates the issue only with `dryRun: false` and a `GITHUB_TOKEN` |
+| `export_bug_to_jira` | `reportPath`, `test`, `projectKey`, `issueType?` (default `Bug`), `labels?`, `dryRun?` (default `true`) | Turns the drafted bug into a Jira issue labelled `bug` + `severity-…`, with the description converted to Atlassian Document Format. **Dry run by default**; creates the issue only with `dryRun: false` and Jira credentials |
 | `ping` | none | Health check |
 
 ### Example: `list_failures`
@@ -106,6 +107,22 @@ Labels: bug, severity:high, checkout
 To create it, call again with dryRun: false (requires GITHUB_TOKEN).
 ```
 
+### Example: `export_bug_to_jira` (dry run, the default)
+
+```text
+DRY RUN: nothing was created. This issue would be created in Jira project SHOP:
+
+Summary: [End-to-end purchase] a customer can buy several items with correct totals: 3.83
+Issue type: Bug
+Labels: bug, severity-high, checkout
+
+Description (sent to Jira as Atlassian Document Format):
+
+**Severity:** high: A @smoke/@e2e test failed consistently: a critical user path is affected.
+…
+To create it, call again with dryRun: false (requires JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN).
+```
+
 ## Getting started
 
 ```bash
@@ -154,6 +171,19 @@ A copy is in [`examples/claude_desktop_config.json`](examples/claude_desktop_con
 
 Never commit a token to a repository. The server reads it from the environment at call time, so it never appears in tool arguments or responses.
 
+### Creating Jira issues (optional)
+`export_bug_to_jira` also previews by default. To let it create issues in Jira Cloud, create an [API token](https://id.atlassian.com/manage-profile/security/api-tokens) for an account that may create issues in the project, and add three variables to the same `env` block:
+
+```json
+"env": {
+  "JIRA_BASE_URL": "https://your-team.atlassian.net",
+  "JIRA_EMAIL": "you@example.com",
+  "JIRA_API_TOKEN": "..."
+}
+```
+
+If your project calls bugs something else (for example "Defect"), pass `issueType`. Severity is sent as a `severity-…` label rather than the Priority field, because Priority is often not on a project's create screen and would make the request fail.
+
 ### Use with Claude Code
 
 ```bash
@@ -176,6 +206,7 @@ Then call `list_failures` with `reportPath` set to `examples/sample-report.json`
 - *"Compare `./yesterday.json` with `./report.json`. What broke since yesterday?"*
 - *"Here are this week's nightly reports. Which tests are the least reliable?"*
 - *"Preview a GitHub issue for the checkout failure in `my-org/web-shop`. If it looks right, create it."*
+- *"File the same bug in Jira project SHOP, but show me the preview first."*
 
 ## Design decisions
 
@@ -186,12 +217,13 @@ Then call `list_failures` with `reportPath` set to `examples/sample-report.json`
 - **Errors are tool results, not crashes.** Bad paths, ambiguous test names and passing tests come back as `isError: true` with guidance, so the assistant can recover.
 - **Comparisons match tests by file, title and project**, not line number, so editing a spec file doesn't make every test look new. Tests skipped in either run are left out, because a skip says nothing about a change in behaviour.
 - **Unstable ≠ broken.** `flaky_history` only ranks tests that both passed and misbehaved across runs; a test failing every time is a consistent failure, reported separately, not flakiness.
-- **The tool drafts, a human decides.** Every bug report ends with "Review before filing", and `export_bug_to_github` is a **dry run unless explicitly told otherwise**. A tool that writes to another system should never do so by surprise.
-- **Secrets stay out of the conversation.** The GitHub token comes from the environment, never from tool arguments. API errors (401, 403, 404, 410) are translated into plain-language causes.
+- **The tool drafts, a human decides.** Every bug report ends with "Review before filing", and both export tools are **dry runs unless explicitly told otherwise**. A tool that writes to another system should never do so by surprise.
+- **Secrets stay out of the conversation.** The GitHub token and Jira credentials come from the environment, never from tool arguments. API errors are translated into plain-language causes; for a Jira 400, the field-level reason Jira gives (such as an unknown issue type) is passed on, because it usually names the exact fix.
+- **One bug, two trackers.** Both exports start from the same drafted report. For Jira, a small converter turns that Markdown into Atlassian Document Format (headings, lists, code blocks, bold/code/italic), so the issue keeps its structure instead of arriving as raw text.
 
 ## Testing
 
-57 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, run comparison, flakiness history, GitHub export (with the API mocked, so tests never create real issues), bad input, schema validation and the full bug-report content.
+81 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, run comparison, flakiness history, GitHub and Jira export (with the APIs mocked, so tests never create real issues), Markdown-to-ADF conversion, bad input, schema validation and the full bug-report content.
 
 | Script | Purpose |
 | --- | --- |
@@ -223,7 +255,6 @@ examples/                 # sample reports and Claude Desktop config
 ```
 
 ## Roadmap
-- Export to Jira, using the same dry-run-first design
 - Attach the trace and screenshot to the created issue
 
 Related project: **[playwright-ts-e2e-framework](https://github.com/Mariya2880/playwright-ts-e2e-framework)**, whose reports this server reads.

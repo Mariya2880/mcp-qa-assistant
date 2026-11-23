@@ -4,6 +4,7 @@ import { registerBugReportTool } from './tools/bugReportTool.js';
 import { registerCompareTool } from './tools/compareTool.js';
 import { registerHistoryTool } from './tools/historyTool.js';
 import { registerExportTool, type ExportOptions } from './tools/exportTool.js';
+import { registerJiraTool, type JiraOptions } from './tools/jiraTool.js';
 
 export const SERVER_NAME = 'mcp-qa-assistant';
 export const SERVER_VERSION = '0.1.0';
@@ -12,7 +13,12 @@ export const SERVER_VERSION = '0.1.0';
  * Builds the MCP server and registers its tools.
  * Kept separate from the stdio entry point so tests can connect to it in memory.
  */
-export function createServer(options: { export?: ExportOptions } = {}): McpServer {
+export interface ServerOptions {
+  export?: ExportOptions;
+  jira?: JiraOptions;
+}
+
+export function createServer(options: ServerOptions = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
 
   server.registerTool(
@@ -31,6 +37,7 @@ export function createServer(options: { export?: ExportOptions } = {}): McpServe
   registerCompareTool(server);
   registerHistoryTool(server);
   registerExportTool(server, options.export);
+  registerJiraTool(server, options.jira);
 
   return server;
 }
