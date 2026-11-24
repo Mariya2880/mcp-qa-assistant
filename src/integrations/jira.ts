@@ -1,5 +1,7 @@
 import type { BugReport } from '../report/bugReport.js';
+import { readFile } from 'node:fs/promises';
 import { markdownToAdf, type AdfDoc } from './adf.js';
+import type { EvidenceFile } from './evidence.js';
 
 export interface JiraConfig {
   /** Site URL, e.g. https://your-team.atlassian.net */
@@ -75,6 +77,9 @@ function siteUrl(baseUrl: string): string {
   return url.origin;
 }
 
+const basicAuth = (config: Required<JiraConfig>): string =>
+  `Basic ${Buffer.from(`${config.email}:${config.apiToken}`).toString('base64')}`;
+
 /** Jira answers 400 with field-level reasons; surface them, they usually name the exact fix. */
 async function badRequestDetail(res: Response): Promise<string> {
   try {
@@ -99,12 +104,11 @@ export async function createJiraIssue(
   fetchImpl: typeof fetch = fetch,
 ): Promise<CreatedJiraIssue> {
   const site = siteUrl(config.baseUrl);
-  const auth = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
 
   const res = await fetchImpl(`${site}/rest/api/3/issue`, {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${auth}`,
+      Authorization: basicAuth(config),
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
@@ -127,4 +131,46 @@ export async function createJiraIssue(
 
   const data = (await res.json()) as { key: string };
   return { key: data.key, url: `${site}/browse/${data.key}` };
+}
+
+export const ISSUE_KEY_PATTERN = /^[A-Z][A-Z0-9_]{1,9}-\d+$/;
+
+/**
+ * Uploads evidence files to an existing issue in one multipart request.
+ * Jira requires the X-Atlassian-Token header on attachment uploads (XSRF protection).
+ */
+export async function uploadJiraAttachments(
+  issueKey: string,
+  files: EvidenceFile[],
+  config: Required<JiraConfig>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<number> {
+  if (!ISSUE_KEY_PATTERN.test(issueKey)) throw new JiraError(`"${issueKey}" is not a valid Jira issue key.`);
+  if (!files.length) return 0;
+  const site = siteUrl(config.baseUrl);
+
+  const form = new FormData();
+  for (const f of files) {
+    form.append('file', new Blob([await readFile(f.path)], { type: f.contentType }), f.fileName);
+  }
+
+  const res = await fetchImpl(`${site}/rest/api/3/issue/${issueKey}/attachments`, {
+    method: 'POST',
+    headers: { Authorization: basicAuth(config), Accept: 'application/json', 'X-Atlassian-Token': 'no-check' },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const reason =
+      res.status === 403
+        ? 'attachments are disabled on this site, or this account may not add them'
+        : res.status === 413
+          ? "a file is larger than this Jira site's attachment limit"
+          : res.status === 404
+            ? `issue ${issueKey} was not found`
+            : `Jira returned HTTP ${res.status}`;
+    throw new JiraError(`Could not upload the attachments: ${reason}.`);
+  }
+  const data = (await res.json()) as unknown[];
+  return Array.isArray(data) ? data.length : files.length;
 }
