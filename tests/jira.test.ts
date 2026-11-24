@@ -152,7 +152,7 @@ describe('export_bug_to_jira over MCP', () => {
     const client = await connectClient({ jira: { getConfig: () => config, fetchImpl: fetchMock as unknown as typeof fetch } });
 
     const out = textOf(
-      await client.callTool({ name: 'export_bug_to_jira', arguments: { ...args, issueType: 'Defect', dryRun: false } }),
+      await client.callTool({ name: 'export_bug_to_jira', arguments: { ...args, issueType: 'Defect', attachEvidence: false, dryRun: false } }),
     );
 
     expect(out).toBe('Created SHOP-7 in Jira project SHOP: https://team.atlassian.net/browse/SHOP-7');

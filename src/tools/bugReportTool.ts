@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { collectTests, findTest, loadReport, ReportError } from '../report/parse.js';
+import { collectTests, findTest, loadReport, ReportError, type TestCase } from '../report/parse.js';
 import { draftBugReport, type BugReport, type Severity } from '../report/bugReport.js';
 import { fail, reportPath, text } from './reportTools.js';
 
@@ -18,7 +18,7 @@ export async function draftFromReport(args: {
   test: string;
   environment?: string;
   severity?: Severity;
-}): Promise<{ ok: true; bug: BugReport } | { ok: false; message: string }> {
+}): Promise<{ ok: true; bug: BugReport; test: TestCase } | { ok: false; message: string }> {
   const report = await loadReport(args.reportPath);
   const found = findTest(collectTests(report), args.test);
   if (!found.ok) return found;
@@ -29,6 +29,7 @@ export async function draftFromReport(args: {
   }
   return {
     ok: true,
+    test: tc,
     bug: draftBugReport(tc, {
       environment: args.environment,
       severity: args.severity,

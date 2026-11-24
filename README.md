@@ -18,7 +18,7 @@ An **MCP (Model Context Protocol) server** that gives AI assistants such as Clau
 | `compare_runs` | `baselineReportPath`, `currentReportPath` | What changed between two runs: **new failures** first, then newly flaky, still failing, fixed, added and removed tests |
 | `flaky_history` | `reportPaths` (2+, oldest first), `top?` | Ranks tests that flaked or failed in some runs but passed in others, with a per-run timeline; tests failing every time are listed separately |
 | `export_bug_to_github` | `reportPath`, `test`, `repo`, `labels?`, `dryRun?` (default `true`) | Turns the drafted bug into a GitHub issue labelled `bug` + `severity:…`. **Dry run by default**; creates the issue only with `dryRun: false` and a `GITHUB_TOKEN` |
-| `export_bug_to_jira` | `reportPath`, `test`, `projectKey`, `issueType?` (default `Bug`), `labels?`, `dryRun?` (default `true`) | Turns the drafted bug into a Jira issue labelled `bug` + `severity-…`, with the description converted to Atlassian Document Format. **Dry run by default**; creates the issue only with `dryRun: false` and Jira credentials |
+| `export_bug_to_jira` | `reportPath`, `test`, `projectKey`, `issueType?` (default `Bug`), `labels?`, `attachEvidence?` (default `true`), `dryRun?` (default `true`) | Turns the drafted bug into a Jira issue labelled `bug` + `severity-…`, with the description converted to Atlassian Document Format, and uploads the test's screenshot, trace and video as attachments. **Dry run by default**; creates the issue only with `dryRun: false` and Jira credentials |
 | `ping` | none | Health check |
 
 ### Example: `list_failures`
@@ -115,6 +115,9 @@ DRY RUN: nothing was created. This issue would be created in Jira project SHOP:
 Summary: [End-to-end purchase] a customer can buy several items with correct totals: 3.83
 Issue type: Bug
 Labels: bug, severity-high, checkout
+Attachments:
+- screenshot: test-failed-1.png (48 KB)
+- trace: trace.zip (1.2 MB)
 
 Description (sent to Jira as Atlassian Document Format):
 
@@ -122,6 +125,15 @@ Description (sent to Jira as Atlassian Document Format):
 …
 To create it, call again with dryRun: false (requires JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN).
 ```
+
+After `dryRun: false`:
+
+```text
+Created SHOP-42 in Jira project SHOP: https://your-team.atlassian.net/browse/SHOP-42
+Attached 2 files: test-failed-1.png, trace.zip
+```
+
+The developer can open the trace straight from the ticket at [trace.playwright.dev](https://trace.playwright.dev) without re-running anything.
 
 ## Getting started
 
@@ -182,7 +194,7 @@ Never commit a token to a repository. The server reads it from the environment a
 }
 ```
 
-If your project calls bugs something else (for example "Defect"), pass `issueType`. Severity is sent as a `severity-…` label rather than the Priority field, because Priority is often not on a project's create screen and would make the request fail.
+If your project calls bugs something else (for example "Defect"), pass `issueType`. Evidence paths in the report are resolved relative to the report file, so run the server against the report inside your Playwright project (where `test-results/` lives). Set `attachEvidence: false` to skip uploads. Severity is sent as a `severity-…` label rather than the Priority field, because Priority is often not on a project's create screen and would make the request fail.
 
 ### Use with Claude Code
 
@@ -220,10 +232,11 @@ Then call `list_failures` with `reportPath` set to `examples/sample-report.json`
 - **The tool drafts, a human decides.** Every bug report ends with "Review before filing", and both export tools are **dry runs unless explicitly told otherwise**. A tool that writes to another system should never do so by surprise.
 - **Secrets stay out of the conversation.** The GitHub token and Jira credentials come from the environment, never from tool arguments. API errors are translated into plain-language causes; for a Jira 400, the field-level reason Jira gives (such as an unknown issue type) is passed on, because it usually names the exact fix.
 - **One bug, two trackers.** Both exports start from the same drafted report. For Jira, a small converter turns that Markdown into Atlassian Document Format (headings, lists, code blocks, bold/code/italic), so the issue keeps its structure instead of arriving as raw text.
+- **Evidence travels with the bug.** The Jira export uploads the screenshot, trace and video from every failing attempt (traces are often only recorded on retry). Missing, inline or oversized files (over Jira's default 10 MB) are listed as "not attached" with the reason, never dropped silently. The issue is created first; if the upload then fails, the result says so and keeps the issue, rather than reporting an error for something that half-succeeded. GitHub's issues API has no file upload, so GitHub issues list the evidence paths instead.
 
 ## Testing
 
-81 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, run comparison, flakiness history, GitHub and Jira export (with the APIs mocked, so tests never create real issues), Markdown-to-ADF conversion, bad input, schema validation and the full bug-report content.
+95 Vitest tests. Tool tests connect a **real MCP client over an in-memory transport**, so they exercise the actual JSON-RPC surface and input schemas, not internal functions. They cover parsing, outcome mapping, step and error extraction, flaky handling, run comparison, flakiness history, GitHub and Jira export (with the APIs mocked, so tests never create real issues), Markdown-to-ADF conversion, evidence collection and upload (against real files in a temporary folder), bad input, schema validation and the full bug-report content.
 
 | Script | Purpose |
 | --- | --- |
@@ -255,7 +268,8 @@ examples/                 # sample reports and Claude Desktop config
 ```
 
 ## Roadmap
-- Attach the trace and screenshot to the created issue
+- Export to Linear and Azure DevOps with the same dry-run-first design
+- A one-page HTML run summary for people who don't use an AI client
 
 Related project: **[playwright-ts-e2e-framework](https://github.com/Mariya2880/playwright-ts-e2e-framework)**, whose reports this server reads.
 
